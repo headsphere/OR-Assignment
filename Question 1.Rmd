@@ -1,0 +1,233 @@
+---
+title: "Question 1"
+output:
+    pdf_document:
+        includes:
+            in_header: mystyles.sty
+documentclass: article
+---
+
+```{r echo=FALSE}
+library(knitr)
+library(xtable)
+library(lpSolve)
+
+colnames = c('x1','x2','x3','x4','x5','x6','x7','x8','x9','x10')
+crew = c("Angela","Benjamin","Clara","Dave","Ed","Francois","Gordon","Harriet","Idi","Joe")
+
+PrintConstraints <- function (rows, constraints.dir, constraints) {
+  mat <- as.matrix(rows)
+  colnames(mat) = colnames
+  kable(cbind(mat, constraints.dir, constraints))
+}
+
+PrintSolutionVector <- function (lp.object) {
+  slnMatrix = t(as.matrix(lp.object$solution))
+  colnames(slnMatrix) = colnames
+  kable(slnMatrix)
+}
+
+PrintSolution <- function (lp.object) {
+  crew[lp.object$solution == 1]
+}
+
+```
+
+###a)
+The problem is a binary integer problem. The $x_i$ represent an indicator variable for the presence of the $ith$ crew member. The objective function to solve is:
+
+$min \sum_{i=1}^{n} x_i Salary_i$
+
+```{r}
+salary = c(8000, 5000, 4000, 10000, 9000, 5000, 3000, 6000, 4000, 5000)
+```
+Constraints:
+
+$\sum_{i=1}^{n} x_i Fishing_i \geq 15$
+
+$\sum_{i=1}^{n} x_i Sailing_i \geq 15$
+
+$\sum_{i=1}^{n} x_i Navigation_i \geq 15$
+
+$\sum_{i=1}^{n} x_i Cooking_i \geq 3$
+
+$x_1, x_2, ..., x_n \geq 0$
+
+```{r}
+fishing = c(2, 1, 1, 5, 4, 3, 1, 2, 4, 2)
+navigation = c(5, 4, 4, 2, 3, 2, 4, 2, 2, 1)
+sailing = c(3, 3, 2, 5, 3, 3, 1, 3, 2, 4)
+cooking = c(1,1,1,0,0,0,1,1,0,0)
+
+constraints = c(15,15,15,3)
+constraints.dir = c(">=",">=",">=",">=")
+```
+
+`r PrintConstraints(rbind(fishing, sailing, navigation, cooking), constraints.dir, constraints)`
+
+```{r}
+lp.object = lp (direction = "min", 
+                objective.in = salary, 
+                const.mat = rbind(fishing, sailing, navigation, cooking), 
+                const.dir = constraints.dir, 
+                const.rhs = constraints, 
+                all.bin=TRUE)
+```
+The minimum achieveable cost for the voyage is: `r paste("$",lp.object$objval)`
+
+The optimal crew is therefore [`r PrintSolution(lp.object)`] given by the solution vector: `r PrintSolutionVector(lp.object)`
+
+###b)
+
+Dave ($x_4$) and Ed ($x_5$) cannot be together on the voyage therefore we add the additional constraint:
+
+$x_4 + x_5 \leq 1$
+
+```{r}
+daveOrEd = c(0,0,0,1,1,0,0,0,0,0)
+constraints = c(15,15,15,3,1)
+constraints.dir = c(">=",">=",">=",">=","<=")
+```
+
+`r PrintConstraints(rbind(fishing, sailing, navigation, cooking, daveOrEd), constraints.dir, constraints)`
+
+```{r}
+lp.object = lp (direction = "min", 
+                objective.in = salary, 
+                const.mat = rbind(fishing, sailing, navigation, cooking, daveOrEd), 
+                const.dir = constraints.dir, 
+                const.rhs = constraints, 
+                all.bin=TRUE)
+```
+The minimum achieveable cost for the voyage is: `r paste("$",lp.object$objval)`
+
+The optimal crew is therefore [`r PrintSolution(lp.object)`] given by the solution vector: `r PrintSolutionVector(lp.object)`
+
+###c)
+
+Dave ($x_4$) and Gordon ($x_7$) cannot be together on the voyage therefore we add the additional constraint:
+
+$x_4 + x_7 \leq 1$
+
+```{r}
+daveOrGordon = c(0,0,0,1,0,0,1,0,0,0)
+constraints = c(15,15,15,3,1)
+constraints.dir = c(">=",">=",">=",">=","<=")
+```
+
+`r PrintConstraints(rbind(fishing, sailing, navigation, cooking, daveOrGordon), constraints.dir, constraints)`
+
+```{r}
+lp.object = lp (direction = "min", 
+                objective.in = salary, 
+                const.mat = rbind(fishing, sailing, navigation, cooking, daveOrGordon), 
+                const.dir = constraints.dir, 
+                const.rhs = constraints, 
+                all.bin=TRUE)
+```
+The minimum achieveable cost for the voyage is: `r paste("$",lp.object$objval)`
+
+The optimal crew is therefore [`r PrintSolution(lp.object)`] given by the solution vector: `r PrintSolutionVector(lp.object)`
+
+###d)
+In order to exclude Idi ($x_9$) from the analysis, we can simply assign him a very large penalty salary thereby ensuring he never is a candidate for the optimal solution. Another option would have been to remove his entries altogther from the initial feasible solution but that would require re-formulating the problem
+
+```{r}
+salary = c(8000, 5000, 4000, 10000, 9000, 5000, 3000, 6000, 10000000, 5000)
+```
+
+```{r echo=FALSE}
+constraints = c(15,15,15,3)
+constraints.dir = c(">=",">=",">=",">=")
+colnamesOld = colnames
+colnames = c('x1','x2','x3','x4','x5','x6','x7','x8','x9','x10')
+```
+`r PrintConstraints(rbind(fishing, sailing, navigation, cooking), constraints.dir, constraints)`
+
+```{r}
+lp.object = lp (direction = "min", 
+                objective.in = salary, 
+                const.mat = rbind(fishing, sailing, navigation, cooking), 
+                const.dir = constraints.dir, 
+                const.rhs = constraints, 
+                all.bin=TRUE)
+```
+The minimum achieveable cost for the voyage is: `r paste("$",lp.object$objval)`
+
+The optimal crew is therefore [`r PrintSolution(lp.object)`] given by the solution vector: `r PrintSolutionVector(lp.object)`
+
+```{r echo=FALSE}
+colnames = colnamesOld
+```
+
+\newpage
+
+###e)
+
+By manually searching using the bisection method, we come to the conclusion that given the baseline optimal solution, $11200 is the lowest amount we can pay Dave whereby he is not included in any optimal solution. Therefore to include him in any optimal solution we can pay him anywhere from $10000 up to $11199.99 
+
+The following analysis shows that at $11200 Dave is omitted from the optimal solution:
+
+```{r}
+salary = c(8000, 5000, 4000, 11200, 9000, 5000, 3000, 6000, 4000, 5000)
+
+fishing = c(2, 1, 1, 5, 4, 3, 1, 2, 4, 2)
+navigation = c(5, 4, 4, 2, 3, 2, 4, 2, 2, 1)
+sailing = c(3, 3, 2, 5, 3, 3, 1, 3, 2, 4)
+cooking = c(1,1,1,0,0,0,1,1,0,0)
+
+constraints = c(15,15,15,3)
+constraints.dir = c(">=",">=",">=",">=")
+```
+
+`r PrintConstraints(rbind(fishing, sailing, navigation, cooking), constraints.dir, constraints)`
+
+```{r}
+lp.object = lp (direction = "min", 
+                objective.in = salary, 
+                const.mat = rbind(fishing, sailing, navigation, cooking), 
+                const.dir = constraints.dir, 
+                const.rhs = constraints, 
+                all.bin=TRUE)
+```
+The minimum achieveable cost for the voyage is: `r paste("$",lp.object$objval)`
+
+The optimal crew is therefore [`r PrintSolution(lp.object)`] given by the solution vector: `r PrintSolutionVector(lp.object)`
+
+\newpage
+
+###f)
+By removing the salary restriction, and making the optimisation problem purely a crew-minimisation problem, the new optimisation function simply looks like this:
+
+$min \sum_{i=1}^{n} x_i$
+
+With a new salary vector like so: 
+
+```{r}
+salary = rep(1,10)
+```
+
+The constraints remain the same:
+```{r}
+fishing = c(2, 1, 1, 5, 4, 3, 1, 2, 4, 2)
+navigation = c(5, 4, 4, 2, 3, 2, 4, 2, 2, 1)
+sailing = c(3, 3, 2, 5, 3, 3, 1, 3, 2, 4)
+cooking = c(1,1,1,0,0,0,1,1,0,0)
+
+constraints = c(15,15,15,3)
+constraints.dir = c(">=",">=",">=",">=")
+```
+
+`r PrintConstraints(rbind(fishing, sailing, navigation, cooking), constraints.dir, constraints)`
+
+```{r}
+lp.object = lp (direction = "min", 
+                objective.in = salary, 
+                const.mat = rbind(fishing, sailing, navigation, cooking), 
+                const.dir = constraints.dir, 
+                const.rhs = constraints, 
+                all.bin=TRUE)
+```
+The optimal crew is therefore [`r PrintSolution(lp.object)`] given by the solution vector: `r PrintSolutionVector(lp.object)`
+
+Therefore the minimum crew size is `r sum(lp.object$solution)`
