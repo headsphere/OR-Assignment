@@ -1,11 +1,4 @@
----
-title: "Question 1"
-output:
-    pdf_document:
-        includes:
-            in_header: mystyles.sty
-documentclass: article
----
+#Question 1
 
 ```{r echo=FALSE}
 library(knitr)

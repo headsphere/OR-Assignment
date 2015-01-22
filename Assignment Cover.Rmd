@@ -1,0 +1,22 @@
+---
+title: "Operations Research Assignment"
+author: "Nick Head"
+date: "22 January 2015"
+output: 
+  pdf_document:
+    toc: yes
+documentclass: article
+---
+
+
+todo: see why this doesn't work
+    includes:
+        in_header: mystyles.sty
+
+\newpage
+
+```{r child = 'Question 1.Rmd'}
+```
+
+```{r child = 'Question 2.Rmd'}
+```
