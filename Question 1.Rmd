@@ -157,7 +157,7 @@ colnames = colnamesOld
 
 ###e)
 
-By manually searching using the bisection method, we come to the conclusion that given the baseline optimal solution, $11200 is the lowest amount we can pay Dave whereby he is not included in any optimal solution. Therefore to include him in any optimal solution we can pay him anywhere from $10000 up to $11199.99 
+By manually searching across the problem space, we come to the conclusion that given the baseline optimal solution, $11200 is the lowest amount we can pay Dave whereby he is not included in any optimal solution. Therefore to include him in any optimal solution we can pay him anywhere from $10000 up to $11199.99 
 
 The following analysis shows that at $11200 Dave is omitted from the optimal solution:
 
@@ -221,6 +221,6 @@ lp.object = lp (direction = "min",
                 const.rhs = constraints, 
                 all.bin=TRUE)
 ```
-The optimal crew is therefore [`r PrintSolution(lp.object)`] given by the solution vector: `r PrintSolutionVector(lp.object)`
+An optimal crew is therefore [`r PrintSolution(lp.object)`] given by the solution vector: `r PrintSolutionVector(lp.object)`
 
 Therefore the minimum crew size is `r sum(lp.object$solution)`

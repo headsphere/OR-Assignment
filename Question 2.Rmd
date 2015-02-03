@@ -1,1 +1,167 @@
 # Question 2
+
+```{r echo=FALSE}
+library(knitr)
+```
+
+###The Function
+
+The function to optimise is a univariate unconstrained NLP:
+
+$$\text{max } f(x) = cos(x) - e^x$$
+
+```{r echo=FALSE}
+f <- function (x) {
+  cos(x) - exp(x)
+}
+
+curve(cos(x) - exp(x), from = -50, to = 1)
+```
+
+This is a non-trivial function to maximise as it is not unimodal and we are not given any constraints within which to find any maxima. 
+
+###Analytic Approach
+
+The first approach we take with a problem like this is to evaluate the first derivative and find the points at which it equals zero:
+
+$$f'(x) = -sin(x) - e^x$$
+
+```{r echo=FALSE}
+fprime <- function (x) {
+  -sin(x) - exp(x)
+}
+
+curve(-sin(x) - exp(x), from = -50, to = 1)
+par(new=T)
+abline(0,0,col = "gray60", lty=2)
+```
+
+As can be seen the local maxima can be identified at the when the line intersects with zero, namely all the multiples of $\pi$. This is not particularly useful however as we appear to have infinitely many local maxima as x tends to $- \infty$
+
+It is not obvious from the graph, however analytically we can see that with every period of $cos(x)$ the function gets very slightly closer to 1 due to the $-e^x$ term. However because $-e^x$ only ever becomes vanishingly small but never actually reaches zero, $cos(x) - e^x$ too will never reach one. With every period of $cos(x)$ we reach a new (very slightly) larger local maxima. Therefore there are an infinite number of local maxima.
+
+
+###Numerical Approaches
+
+None of the numerical approaches outlined below were able to find any global optima due to the somewhat pathological nature of the objective function. They are only described in this section to outline their limitations for this particular example.
+
+####Newton Raphson
+
+Because both first and second derivatives of the objective function can be evaluated, we look at the Newton-Raphson point approximation method. As can be seen however this approach will only ever find a local extremum, and more worryingly, for a 'badly behaved' function such as this one, can end up finding a minimum instead of a maximum completely depending on the starting location. The plot below shows that due to the arbitrary step size, even when starting close to a local maxima, the algorithm jumps over the maxima, and proceeds to head to a minima instead.   
+
+$$f''(x) = -cos(x) - e^x$$
+
+```{r}
+fprimeprime <- function (x) {
+  -cos(x) - exp(x)
+}
+```
+
+
+```{r}
+x = c(-5,rep(NA,6))
+fval = rep(NA,7)
+fprimeval = rep(NA,7)
+fprimeprimeval = rep(NA,7)
+
+for(i in 1:6){
+  fval[i]=f(x[i])
+  fprimeval[i]=fprime(x[i])
+  fprimeprimeval[i]=fprimeprime(x[i]) 
+  x[i+1]=x[i]-fprimeval[i]/fprimeprimeval[i]
+} 
+```
+
+```{r echo=FALSE}
+kable(data.frame(x,fval,fprimeval,fprimeprimeval))
+
+curve(f(x), from = -50, to = 1, xlim = c(-50, 0), ylim = c(-2, 1))
+par(new=T)
+points(x, fval, xlab = NA, ylab = NA, xaxt='n', yaxt='n', xlim = c(-50, 0), ylim = c(-2, 1), col="red")
+
+```
+
+####Line Search
+
+Again, because this method should not be used with more than one stationary point, the technique can be discarded immediately. 
+```{r echo=FALSE, eval=FALSE}
+a=0
+b=0
+a[1]=0
+b[1]=1
+x=0
+tolerance=0.01
+n=1 
+while(abs(b[n]-a[n])>tolerance) {
+  x[n]=0.5*(a[n]+b[n]) 
+  if(fprime(x[n])<0){
+    a[n+1]=a[n]
+    b[n+1]=x[n]
+    }
+  if(fprime(x[n])>=0){
+    a[n+1]=x[n]
+    b[n+1]=b[n]
+    }
+  n=n+1
+  }
+width=b-a 
+kable(data.frame(a,b,width))
+```
+
+####Golden Section Search
+
+Golden Section again, is not appropriate for this problem but to show that it could have been useful if the problem was unimodal we can see the following output does end up converging to a local maxima. However due to the step size and the multi-modal nature of this problem, the choice of maxima that it eventually settles on does appear to be fairly arbitrary. 
+
+```{r}
+n=1
+a=0;
+a[1]=-50
+b=0;
+b[1]=1
+phi=0.5*(sqrt(5)-1) 
+L=0;
+L[1]=a[1]+phi*phi*(b[1]-a[1]) 
+U=0;
+U[1]=b[1]-(L[1]-a[1]) 
+tolerance=0.001 
+while(abs(b[n]-a[n])>tolerance) {
+  if(f(L[n])>=f(U[n])){
+    a[n+1]=a[n] 
+    b[n+1]=U[n] 
+    L[n+1]=a[n]+U[n]-L[n] 
+    U[n+1]=L[n]
+    }
+  else{
+    a[n+1]=L[n]
+    b[n+1]=b[n]
+    L[n+1]=U[n] 
+    U[n+1]=b[n]-U[n]+L[n]
+    } 
+  n=n+1
+  }
+width=b-a 
+```
+
+```{r echo=FALSE}
+kable(data.frame(a,b,L,U,width))
+
+curve(f(x), from = -50, to = 1, xlim = c(-50, 0), ylim = c(-2, 1))
+par(new=T)
+points(a, f(a), xlab = NA, ylab = NA, xaxt='n', yaxt='n', xlim = c(-50, 0), ylim = c(-2, 1), col="red")
+```
+
+```{r echo=FALSE, eval=FALSE}
+#not sure we need this chunk
+curve(f(x), from = -50, to = 1, xlim = c(-50, 0), ylim = c(-2, 1))
+
+for(i in 1:90){
+  opt = optimize(f, c(-(i*100), 1), maximum =TRUE)
+  x = opt$maximum
+  y = opt$objective
+  
+  par(new=T)
+  plot(x, y, xlab = NA, ylab = NA, xaxt='n', yaxt='n', xlim = c(-50, 0),ylim = c(-2, 1), col="RED")
+}
+```
+
+In conclusion, none of the numerical techniques were appropriate for this problem. If we did have a constrained optimisation problem, we could have used Golden Section search to first narrow down the search space, and then Newton-Raphson to home in on the final extreme point. 

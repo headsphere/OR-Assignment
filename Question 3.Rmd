@@ -1,0 +1,177 @@
+---
+output: pdf_document
+---
+# Question 3
+
+```{r echo=FALSE}
+library(knitr)
+library(emdbook)
+```
+
+###Objective Function
+
+The function to optimise is a convex function with non-linear and linear (box) constraints:
+
+$$\text{max } 3x + 5y$$
+$$\text{st }9x^2 + 5y^2 \leq k$$
+$$0 \leq x \leq 4$$
+$$y \geq 2$$
+
+```{r echo=FALSE}
+f <- function (x, y) {
+  3*x + 5*y
+}
+
+constraint <- function (x, y) {
+  9*x^2 + 5*y^2
+}
+curve3d(expr = f, from = c(-5,-5), to = c(5,5), n = 100, sys3d = "persp", )
+curve3d(expr = constraint, from = c(-5,-5), to = c(5,5), n = 100, sys3d = "persp")
+```
+
+### Kuhn-Tucker Conditions
+
+By reformulating the NLP we can derive the Kuhn-Tucker conditions:
+
+$$\text{min } -3x -5y$$
+$$\text{st }9x^2 + 5y^2 -k \leq 0$$
+$$x - 4 \leq 0$$
+$$-x \leq 0$$
+$$-y -2 \leq 0$$
+
+Leads to:
+
+i. $L = -3x - 5y + u_1(9x^2 + 5y^2 - k) + u_2(x-4) + u_3(-x) + u_4(-y - 2)$
+
+ii. $-3 + 18u_1x + u_2 - u_3 = 0$
+
+iii. $-5 + 10u_1y - u_4 = 0$
+
+iv. $u_1(9x^2 + 5y^2 - k) = 0$
+
+v. $u_2(x - 4) = 0$
+
+vi. $u_3(-x) = 0$
+
+vii. $u_4(-y - 2) = 0$
+
+viii. $9x^2 + 5y^2 \leq k$
+
+ix. $0 \leq x \leq 4$
+
+x. $y \geq 2$
+
+xi. $u_1 \geq 0, u_2 \geq 0, u_3 \geq 0, u_4 \geq 0,$
+
+Because of the large number of cases that this approach requires we investigate, the analytical approach is too cumbersome for this example, and instead we turn to a numerical approach.
+
+###Optimization Routine
+
+The standard R package `optim` does not support constrained non-linear optimization, hence why we have to use a different package. After much investigation the only package that would be able to handle this problem is NLopt, for which we can utilize the R port of this project, `nloptr`[^nlopt]
+
+Within the `nloptr` package we must choose an underlying algorithm. The package provides a vast number of algorithms, however the only one that supports arbitrary nonlinear inequality and equality constraints is COBYLA (Constrained Optimization BY Linear Approximations)[^cobyla].
+
+The set up is straightfoward; all we have to provide are our objective function, constraint function, and whatever linear (box) constraints we require. A basic optimization routine looks like so: 
+
+```{r}
+library(nloptr)
+
+#objective function
+eval_f0 <- function (x, k) {
+  return (-(3*x[1] + 5*x[2])) #to minimize we take the negative
+}
+
+#non-linear constraint function
+eval_g0 <- function( x, k ) {
+  return (9 * x[1]^2 + 5 * x[2]^2 - k)
+}
+
+#linear box constraints
+xLower <- 0
+xUpper <- 4
+yLower <- 2
+yUpper <- Inf
+
+#values of the k parameter to test against
+k <- seq(1, 10)
+
+runOptim <- function (k) {
+  nloptr( x0=c(xUpper, xUpper), 
+            eval_f=eval_f0, 
+            lb = c(xLower,yLower),
+            ub = c(xUpper,yUpper),
+            eval_g_ineq = eval_g0,
+            opts = list("algorithm"="NLOPT_LN_COBYLA",
+                        "xtol_rel"=1.0e-4,
+                        "print_level" = 0),
+            k = k )
+}
+```
+
+For our specific purposes however it is slightly more complicated as we want to find the optimum across all of k. My approach to solving this problem was to see how the optimizer performed at extreme values of k and then narrowed the problem space down. This led me to the following results:
+
+```{r echo=FALSE}
+lower <- c(-5,-5)
+upper <- c(15,15)
+curve3d(expr = f, from = lower, to = upper, n = 100, sys3d = "image")
+curve3d(expr = constraint, from = lower, to = upper, n = 100, sys3d = "contour", add=TRUE)
+par(new=T)
+
+#fill the feasible region
+polygon(x = c(lower[1],0,0,lower[1]), 
+        y = c(lower[1],lower[1],upper[2],upper[2]),
+        col = 'red', 
+        angle=45,
+        density=20)
+
+polygon(x = c(xUpper,xUpper,upper[1],upper[1]), 
+        y = c(upper[1],lower[1],lower[1],upper[1]),
+        col = 'red', 
+        angle=45,
+        density=20)
+
+polygon(x = c(0, xUpper, xUpper, 0), 
+        y = c(lower[1],lower[1], yLower, yLower),
+        col = 'red', 
+        angle=45,
+        density=20)
+
+abline(col="green", v=xLower)
+abline(col="green", v=xUpper)
+abline(col="green", h=yLower)
+
+x = c(0)
+y = c(0)
+f = c(0)
+k = c(0)
+
+for(i in 0:15){  
+  lower = (i-1)*100
+  upper = (i)*100
+  res = runOptim(seq(lower, upper))
+
+  x[i] = res$solution[1]
+  y[i] = res$solution[2]
+  f[i] = -1 * res$objective
+  k[i] = paste(lower, upper, sep=":")
+}
+
+points(x, y, xlab = NA, ylab = NA, xaxt='n', yaxt='n', xlim = lower, ylim = upper, type="p", col = "blue")
+
+legend("topright", c("linear constraints", "non-linear constraint", "optimum points"), col = c("green", "black", "blue"),
+       text.col = "green4", lty = c(1, 1, NA), pch = c(NA, NA, 1),
+       merge = TRUE, bg="white")
+```
+
+As can be seen, the maximum value of the objective function is achieved as k is maximised:
+
+```{r echo=FALSE}
+data <- cbind(x, y, f)
+df = as.data.frame(cbind(k, round(data, digits = 5)))
+colnames(df) = c("k interval", "x", "y", "f(x,y)")
+kable(df, digits=5)
+
+```
+
+[^cobyla]: http://ab-initio.mit.edu/wiki/index.php/NLopt_Algorithms#COBYLA_.28Constrained_Optimization_BY_Linear_Approximations.29
+[^nlopt]: http://cran.r-project.org/web/packages/nloptr/vignettes/nloptr.pdf
